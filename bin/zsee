@@ -1,6 +1,4 @@
-#!/bin/bash
-
-DIR=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
+#!/usr/bin/env bash
 
 # Set the window size to tune the display if needed. or this program will do it in an adaptive mode.
 
@@ -9,53 +7,51 @@ stty_lns_set=0 # which can get by "$ tput lines" or "echo $LINES" in shell when 
 ###############################################################
 
 if [ $# -ge 1 ] && [ $1 = "-h" ] || [ $# -gt 5 ]; then
-	echo "Usage: zsee [lo,eth0] [sda,sdb,sdc...] [cpua] [interval]"
-	echo "[interval]: refresh interval with seconds. e.g. 'zsee 4'"
-	echo "[cpua]: only show total cpu"
-	exit
+    echo "Usage: zsee [lo,eth0] [sda,sdb,sdc...] [cpua] [interval]"
+    echo "[interval]: refresh interval with seconds. e.g. 'zsee 4'"
+    echo "[cpua]: only show total cpu"
+    exit
 fi
 
-
-
-for i in $@ ;do
-	if [ $i = "long" ] ;then
-		show="long"
-	else
-		if [ $i = "cpua" ] ;then
-			cpu="total"
-		else
-			if [ ${i:0:2} = "sd" ] || [ ${i:0:2} = "vd" ] || [ ${i:0:3} = "nvm" ]  ;then
-				dsks=$i
-			else
-				if [[ $i =~ ^[0-9]+$ ]] ;then
-					int=$i
-				else
-					nets=$i
-				fi
-			fi
-		fi
-	fi
+for i in $@; do
+    if [ $i = "long" ]; then
+        show="long"
+    else
+        if [ $i = "cpua" ]; then
+            cpu="total"
+        else
+            if [ ${i:0:2} = "sd" ] || [ ${i:0:2} = "vd" ] || [ ${i:0:3} = "nvm" ]; then
+                dsks=$i
+            else
+                if [[ $i =~ ^[0-9]+$ ]]; then
+                    int=$i
+                else
+                    nets=$i
+                fi
+            fi
+        fi
+    fi
 done
 
-if [ -z $cpu ];then
-	cpu="all"
+if [ -z $cpu ]; then
+    cpu="all"
 fi
-if [ -z $show ];then
-	show="short"
+if [ -z $show ]; then
+    show="short"
 fi
-if [ -z $nets ];then
-	nets=`cat /proc/net/if_inet6 | awk '{if(NR>1)printf ",";printf $NF}'`
+if [ -z $nets ]; then
+    nets=$(cat /proc/net/if_inet6 | awk '{if(NR>1)printf ",";printf $NF}')
 fi
-if [ -z $dsks ];then
-	dsks=`ls /sys/block/ | egrep "vd|sd|nvm" | awk '{if(NR>1)printf ",";printf $1}'`
+if [ -z $dsks ]; then
+    dsks=$(ls /sys/block/ | egrep "vd|sd|nvm" | awk '{if(NR>1)printf ",";printf $1}')
 fi
-if [ -z $int ];then
-	int=2
+if [ -z $int ]; then
+    int=2
 fi
-if [ -z ${stty_lines} ];then
-	stty_lines=0;
+if [ -z ${stty_lines} ]; then
+    stty_lines=0
 fi
 
 "$DIR"/dstat -tmnd --disk-tps --disk-avgrq --disk-util -D $dsks -c -N $nets -C $cpu --nocolor --noheaders $int |
-"$DIR"/awk -v dsks=$dsks -v stty_lns_set=$stty_lns_set -f arrange.awk
+    "$DIR"/awk -v dsks=$dsks -v stty_lns_set=$stty_lns_set -f "$DIR"/arrange.awk
 echo

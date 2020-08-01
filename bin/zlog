@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ###Set the window size to tune the display if needed. or this program will do it in an adaptive mode.
 
@@ -7,86 +7,91 @@ stty_lns_set=0 #which can get by "$ tput lines" or "echo $LINES" in shell when p
 ###############################################################
 
 if [ $# -ge 1 ] && [ $1 = "-h" ] || [ $# -gt 6 ]; then
-	echo "Usage: zlog [lo,eth0] [sda,sdb,sdc] [120(seconds last)] [-s(ilent)] -o logfile (must be the last parameter)"
-	exit;
+    echo "Usage: zlog [lo,eth0] [sda,sdb,sdc] [120(seconds last)] [-s(ilent)] -o logfile (must be the last parameter)"
+    exit
 fi
 
+DIR=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
+AWK="$DIR"/awk
+DSTAT="$DIR"/dstat
 
-ofile="zlog."`date +"%s"`
+ofile="zlog."$(date +"%s")
 #ofile="zlog.output"
-echo -n > $ofile
+echo -n >$ofile
 
 idx=0
 setfile=0
-for i in $@ ;do
-	idx=$((idx+1));
-	
-	if (( idx == $# - 1  )) && [ $i == "-o" ] ;then
-		setfile=1
-		continue; #if ofile given, then no further handle in following part
-	fi
-	if (( setfile && idx == $# )); then
-		ofile=$i
-		continue; #if ofile given, then no further handle in following part
-	fi
+for i in $@; do
+    idx=$((idx + 1))
 
-################################	
-	if [ $i = "-s" ] ;then
-		pflag="F"
-	else
-		if [ $i = "cpua" ] ;then
-			cpu="total"
-		else
-			if [ ${i:0:2} = "sd" ] || [ ${i:0:2} = "vd" ] ;then
-				dsks=$i
-			else
-				if [[ $i =~ ^[0-9]+$ ]] ;then
-					tlast=$i
-				else
-					nets=$i
-				fi
-			fi
-		fi
-	fi
+    if ((idx == $# - 1)) && [ $i == "-o" ]; then
+        setfile=1
+        continue #if ofile given, then no further handle in following part
+    fi
+    if ((setfile && idx == $#)); then
+        ofile=$i
+        continue #if ofile given, then no further handle in following part
+    fi
+
+    ################################
+    if [ $i = "-s" ]; then
+        pflag="F"
+    else
+        if [ $i = "cpua" ]; then
+            cpu="total"
+        else
+            if [ ${i:0:2} = "sd" ] || [ ${i:0:2} = "vd" ]; then
+                dsks=$i
+            else
+                if [[ $i =~ ^[0-9]+$ ]]; then
+                    tlast=$i
+                else
+                    nets=$i
+                fi
+            fi
+        fi
+    fi
 done
 
-if [ -z $cpu ];then
-	cpu="all"
+if [ -z $cpu ]; then
+    cpu="all"
 fi
-if [ -z $show ];then
-	show="short"
+if [ -z $show ]; then
+    show="short"
 fi
-if [ -z $nets ];then
-	nets=`cat /proc/net/if_inet6 | awk '{if(NR>1)printf ",";printf $NF}'`
+if [ -z $nets ]; then
+    nets=$(cat /proc/net/if_inet6 | $AWK '{if(NR>1)printf ",";printf $NF}')
 fi
-if [ -z $dsks ];then
-	dsks=`ls /sys/block/ | egrep "vd|sd" | awk '{if(NR>1)printf ",";printf $1}'`
+if [ -z $dsks ]; then
+    dsks=$(ls /sys/block/ | egrep "vd|sd" | $AWK '{if(NR>1)printf ",";printf $1}')
 fi
-if [ -z $int ];then
-	int=2
+if [ -z $int ]; then
+    int=2
 fi
-if [ -z ${stty_lines} ];then
-	stty_lines=0;	
+if [ -z ${stty_lines} ]; then
+    stty_lines=0
 fi
-if [ -z $pflag ];then
-	pflag="T"
+if [ -z $pflag ]; then
+    pflag="T"
 fi
-if [ -z $tlast ];then
-	tlast=120
+if [ -z $tlast ]; then
+    tlast=120
 fi
 
 int=2 #default interval
-times=$((tlast/int))
+times=$((tlast / int))
 
-echo;echo "It will stat for $tlast seconds...";echo
+echo
+echo "It will stat for $tlast seconds..."
+echo
 
 if [ $pflag = "F" ]; then
-	dstat -tmnd --disk-tps --disk-avgrq --disk-util -D $dsks -c -N $nets -C $cpu --nocolor --noheaders --output $ofile $int $times > /dev/null
+    $DSTAT -tmnd --disk-tps --disk-avgrq --disk-util -D $dsks -c -N $nets -C $cpu --nocolor --noheaders --output $ofile $int $times >/dev/null
 else
 
-	dstat -tmnd --disk-tps --disk-avgrq --disk-util -D $dsks -c -N $nets -C $cpu --nocolor --noheaders --output $ofile $int $times | 
-	awk -v dsks=$dsks -v stty_lns_set=$stty_lns_set '{
-	
+    $DSTAT -tmnd --disk-tps --disk-avgrq --disk-util -D $dsks -c -N $nets -C $cpu --nocolor --noheaders --output $ofile $int $times |
+        $AWK -v dsks=$dsks -v stty_lns_set=$stty_lns_set '{
+
 		#Dynamically get the windows size at each loop
 		if (stty_lns_set == 0){ #preset in shell begion or not
 			"tput lines"|getline lns; close("tput lines");
@@ -297,16 +302,8 @@ fi
 echo
 
 zsum $ofile
-echo ;echo;
+echo
+echo
 echo "@@Have logged into file : ""\""$ofile"\""", dont forget to clean!!"
 echo
 #rm -rf $ofile
-
-
-
-
-
-
-
-
-
