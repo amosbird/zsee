@@ -13,6 +13,10 @@ if [ $# -ge 1 ] && [ $1 = "-h" ] || [ $# -gt 5 ]; then
     exit
 fi
 
+DIR=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
+AWK="$DIR"/awk
+DSTAT="$DIR"/dstat
+
 for i in $@; do
     if [ $i = "long" ]; then
         show="long"
@@ -52,6 +56,6 @@ if [ -z ${stty_lines} ]; then
     stty_lines=0
 fi
 
-"$DIR"/dstat -tmnd --disk-tps --disk-avgrq --disk-util -D $dsks -c -N $nets -C $cpu --nocolor --noheaders $int |
-    "$DIR"/awk -v dsks=$dsks -v stty_lns_set=$stty_lns_set -f "$DIR"/arrange.awk
+$DSTAT -tmnd --disk-tps --disk-avgrq --disk-util -D $dsks -c -N $nets -C $cpu --nocolor --noheaders $int |
+    $AWK -v dsks=$dsks -v stty_lns_set=$stty_lns_set -f "$DIR"/arrange.awk
 echo
